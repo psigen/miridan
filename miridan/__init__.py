@@ -25,3 +25,4 @@ api = Api(app)
 import miridan.views
 import miridan.users
 import miridan.world
+import miridan.logic

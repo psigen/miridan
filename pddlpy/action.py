@@ -1,8 +1,7 @@
 """
 Module that defines all actions in this world.
 """
-from miridan.predicates import *
-from miridan import database
+from pddlpy.predicate import Predicate
 import inspect
 
 
@@ -13,30 +12,17 @@ class Action(object):
     def __init__(self):
         pass
 
-    def __call__(self, **kwargs):
+    def __call__(self, *args, **kwargs):
         """
         Modify the database as necessary to execute this action.
         """
         pass
 
-    def pre(self, **kwargs):
+    def pre(self, *args, **kwargs):
         return Predicate()
 
-    def post(self, **kwargs):
+    def post(self, *args, **kwargs):
         return Predicate()
-
-
-class PickUp(Action):
-    def __call__(self, player, obj):
-        database[obj]['held'] = True
-        database[obj]['x'] = None
-        database[obj]['y'] = None
-
-    def pre(self, player, obj):
-        return ~IsHeld(obj=obj) & ~IsHeavy(obj=obj) & ~IsHolding(obj=player)
-
-    def post(self, player, obj):
-        return IsHeld(obj=obj) & IsHolding(obj=player)
 
 
 def load(database):

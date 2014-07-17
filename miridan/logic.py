@@ -1,9 +1,8 @@
 from miridan import app
-from miridan import database
+from miridan import db
 
-import miridan.predicates
-import miridan.actions
 from flask import jsonify, request, abort
+from pddlpy import Predicate, Action, Domain
 
 actions = miridan.actions.load(database)
 predicates = miridan.predicates.load(database)
@@ -35,20 +34,21 @@ def list_actions():
 @app.route('/actions/<action_name>',  methods=["GET", "POST"])
 def action(action_name=None):
     try:
-        action = actions[action_name]
-        args = {name: arg for (name, arg) in request.args.iteritems()}
+        with Domain(db=db):
+            action = actions[action_name]
+            args = {name: arg for (name, arg) in request.args.iteritems()}
 
-        if action.pre(**args):
-            action(**args)
-            return jsonify(action=action_name,
-                           args=args,
-                           result=action.post(**args))
-        else:
-            action(request.args)
-            return jsonify(action=action_name,
-                           args=args,
-                           result=False,
-                           reason="Preconditions not met.")
+            if action.pre(**args):
+                action(**args)
+                return jsonify(action=action_name,
+                               args=args,
+                               result=action.post(**args))
+            else:
+                action(request.args)
+                return jsonify(action=action_name,
+                               args=args,
+                               result=False,
+                               reason="Preconditions not met.")
     except TypeError:
         abort(404)
 
@@ -64,11 +64,49 @@ def list_predicates():
 @app.route('/predicates/<predicate_name>', methods=["GET", "POST"])
 def predicate(predicate_name=None):
     try:
-        predicate = predicates[predicate_name]
-        args = {name: arg for (name, arg) in request.args.iteritems()}
+        with Domain(db=db):
+            predicate = predicates[predicate_name]
+            args = {name: arg for (name, arg) in request.args.iteritems()}
 
-        return jsonify(predicate=predicate_name,
-                       args=args,
-                       result=predicate(**args))
+            return jsonify(predicate=predicate_name,
+                           args=args,
+                           result=predicate(**args))
     except KeyError:
         abort(404)
+
+
+class IsHeavy(Predicate):
+    def __call__(self, obj):
+        try:
+            return self.db[obj]['mass'] > 10.0
+        except KeyError:
+            return False
+
+
+class IsHeld(Predicate):
+    def __call__(self, obj):
+        try:
+            return self.db[obj]['held']
+        except KeyError:
+            return False
+
+
+class IsHolding(Predicate):
+    def __call__(self, obj):
+        try:
+            return self.db[obj]['holding']
+        except KeyError:
+            return False
+
+
+class PickUp(Action):
+    def __call__(self, player, obj):
+        self.db[obj]['held'] = True
+        self.db[obj]['x'] = None
+        self.db[obj]['y'] = None
+
+    def pre(self, player, obj):
+        return ~IsHeld(obj=obj) & ~IsHeavy(obj=obj) & ~IsHolding(obj=player)
+
+    def post(self, player, obj):
+        return IsHeld(obj=obj) & IsHolding(obj=player)

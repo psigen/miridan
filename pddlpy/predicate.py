@@ -31,6 +31,12 @@ class BasePredicate(object):
         """
         return NotPredicate(self)
 
+    def why(self):
+        """
+        Diagnostic function to determine why a predicate failed.
+        """
+        return str(self) if self else None
+
 
 class AndPredicate(BasePredicate):
     def __init__(self, left, right):
@@ -41,6 +47,9 @@ class AndPredicate(BasePredicate):
     def __nonzero__(self):
         return self.left() & self.right()
 
+    def why(self):
+        return self.left.why() or self.right.why()
+
 
 class NotPredicate(BasePredicate):
     def __init__(self, inner):
@@ -50,36 +59,15 @@ class NotPredicate(BasePredicate):
     def __nonzero__(self):
         return ~self.inner()
 
+    def why(self):
+        return str(self) if not self else None  # TODO: fix this
+
 
 class Predicate(BasePredicate):
     pass
 
 
-class IsHeavy(Predicate):
-    def __call__(self, obj):
-        try:
-            return database[obj]['mass'] > 10.0
-        except KeyError:
-            return False
-
-
-class IsHeld(Predicate):
-    def __call__(self, obj):
-        try:
-            return database[obj]['held']
-        except KeyError:
-            return False
-
-
-class IsHolding(Predicate):
-    def __call__(self, obj):
-        try:
-            return database[obj]['holding']
-        except KeyError:
-            return False
-
-
-def load(database):
+def load():
     """
     Load all the predicates into a dictionary.
     """
