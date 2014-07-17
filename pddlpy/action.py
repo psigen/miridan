@@ -32,3 +32,6 @@ class Action(object):
 
     def post(self, *args, **kwargs):
         return Predicate()
+
+    def cost(self):
+        return 1.0  # TODO: what should this actually be?
