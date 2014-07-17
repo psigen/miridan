@@ -17,9 +17,6 @@ app.config["MONGODB_SETTINGS"] = {"DB": "miridan",
 # Initialize various extensions.
 db = MongoEngine(app)
 api = Api(app)
-login_manager = LoginManager()
-login_manager.init_app(app)
-
 
 import miridan.views
 import miridan.users
