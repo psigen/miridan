@@ -1,8 +1,8 @@
 from miridan import db
 from miridan import api
 
-from flask import jsonify, request
-from flask.ext.login import login_required
+from flask import request
+from flask.ext.security import login_required, roles_required
 from flask.ext.restful import Resource, abort
 from flask.ext.mongoengine import ValidationError
 from mongoengine.errors import InvalidQueryError, OperationError
