@@ -14,6 +14,9 @@ app.config["MONGODB_SETTINGS"] = {"DB": "miridan",
                                   "HOST": "127.0.0.1", "PORT": 27017}
 app.config['SECURITY_REGISTERABLE'] = True
 app.config['SECURITY_CONFIRMABLE'] = False
+app.config['SECURITY_SEND_REGISTER_EMAIL'] = False
+app.config['SECURITY_SEND_PASSWORD_CHANGE_EMAIL'] = False
+app.config['SECURITY_SEND_PASSWORD_RESET_NOTICE_EMAIL'] = False
 app.config['SECURITY_CHANGEABLE'] = True
 app.config['SECURITY_PASSWORD_HASH'] = 'pbkdf2_sha512'
 app.config['SECURITY_PASSWORD_SALT'] = 'SALTYEGGSANDBACON'  # TODO: security.
