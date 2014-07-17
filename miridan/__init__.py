@@ -1,5 +1,7 @@
 from flask import Flask
 from flask.ext.mongoengine import MongoEngine
+from flask.ext.login import LoginManager
+from flask.ext.restful import Api
 
 # Create the Flask application.
 app = Flask(__name__)
@@ -11,7 +13,12 @@ app.config["MONGODB_SETTINGS"] = {"DB": "miridan",
                                   #"USERNAME": "my_user_name",
                                   #"PASSWORD": "my_secret_password",
                                   "HOST": "127.0.0.1", "PORT": 27017}
+
+# Initialize various extensions.
 db = MongoEngine(app)
+api = Api(app)
+login_manager = LoginManager()
+login_manager.init_app(app)
 
 
 import miridan.views

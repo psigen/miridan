@@ -1,15 +1,12 @@
-from flask.ext.login import LoginManager
+
 from flask.ext.login import login_required, login_user, logout_user
 from flask.ext.login import current_user
 
 from miridan import app
 from miridan import db
+from miridan import login_manager
 
 from flask import flash, redirect, url_for, request, jsonify
-
-# Create a login manager here.
-login_manager = LoginManager()
-login_manager.init_app(app)
 
 
 class User(db.Document):
@@ -26,6 +23,9 @@ class User(db.Document):
 
     def is_anonymous(self):
         return False
+
+    def is_administrator(self):
+        return True
 
     def get_id(self):
         return self.userid
