@@ -12,9 +12,14 @@ class Action(object):
     def __init__(self):
         pass
 
-    @property
-    def domain(self):
-        return Domain.root
+    def __getattr__(self, item):
+        """
+        Attempt to resolve unknown attributes from Domain scope.
+        """
+        try:
+            return Domain.root[item]
+        except KeyError:
+            raise AttributeError(item)
 
     def __call__(self, *args, **kwargs):
         """

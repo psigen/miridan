@@ -12,9 +12,14 @@ class BasePredicate(object):
         self.args = kwargs
         self.__call__ = self.__class__.__nonzero__
 
-    @property
-    def domain(self):
-        return Domain.root
+    def __getattr__(self, item):
+        """
+        Attempt to resolve unknown attributes from Domain scope.
+        """
+        try:
+            return Domain.root[item]
+        except KeyError:
+            raise AttributeError(item)
 
     def __nonzero__(self):
         """

@@ -1,92 +1,92 @@
-from miridan import app
-from miridan import db
+from miridan import api
+from miridan.world import WorldObject
 
-from flask import jsonify, request, abort
+from flask import jsonify, request
+from flask.ext.restful import Resource, abort
 from pddlpy import Predicate, Action, Domain
 import inspect
 
 
-@app.route('/action')
-@app.route('/actions')
-def list_actions():
-    # TODO: provide args
-    return jsonify(actions=actions.keys())
+class PredicateView(Resource):
+    def get(self):
+        return jsonify(predicates=predicates.keys())
 
 
-@app.route('/action/<action_name>',  methods=["GET", "POST"])
-@app.route('/actions/<action_name>',  methods=["GET", "POST"])
-def action(action_name=None):
-    try:
-        with Domain(db=db):
-            action = actions[action_name]
-            args = {name: arg for (name, arg) in request.args.iteritems()}
+class PredicateEval(Resource):
+    def get(self, predicate_name):
+        try:
+            with Domain(world=WorldObject):
+                predicate = predicates[predicate_name]
+                args = {name: arg for (name, arg) in request.args.iteritems()}
 
-            if action.pre(**args):
-                action(**args)
-                return jsonify(action=action_name,
+                return jsonify(predicate=predicate_name,
                                args=args,
-                               result=action.post(**args))
-            else:
-                action(request.args)
-                return jsonify(action=action_name,
-                               args=args,
-                               result=False,
-                               reason="Preconditions not met.")
-    except TypeError:
-        abort(404)
+                               result=predicate(**args))
+        except KeyError:
+            abort(404, message="Predicate '{}' was not found."
+                               .format(predicate_name))
+        except (TypeError, AttributeError), e:
+            abort(400, message=repr(e))
 
 
-@app.route('/predicate')
-@app.route('/predicates')
-def list_predicates():
-    # TODO: provide predicates
-    return jsonify(predicates=predicates.keys())
+class ActionView(Resource):
+    def get(self):
+        return jsonify(actions=actions.keys())
 
 
-@app.route('/predicate/<predicate_name>', methods=["GET", "POST"])
-@app.route('/predicates/<predicate_name>', methods=["GET", "POST"])
-def predicate(predicate_name=None):
-    try:
-        with Domain(db=db):
-            predicate = predicates[predicate_name]
-            args = {name: arg for (name, arg) in request.args.iteritems()}
+class ActionEval(Resource):
+    def get(self, action_name):
+        try:
+            with Domain(world=WorldObject):
+                action = actions[action_name]
+                args = {name: arg for (name, arg) in request.args.iteritems()}
 
-            return jsonify(predicate=predicate_name,
-                           args=args,
-                           result=predicate(**args))
-    except KeyError:
-        abort(404)
+                if action.pre(**args):
+                    action(**args)
+                    return jsonify(action=action_name,
+                                   args=args,
+                                   result=action.post(**args))
+                else:
+                    action(request.args)
+                    return jsonify(action=action_name,
+                                   args=args,
+                                   result=False,
+                                   reason="Preconditions not met.")
+        except KeyError, e:
+            abort(404, message="Action '{}' was not found.'"
+                               .format(action_name))
+
+
+api.add_resource(PredicateView, '/predicate')
+api.add_resource(PredicateEval, '/predicate/<predicate_name>')
+api.add_resource(ActionView, '/action')
+api.add_resource(ActionEval, '/action/<action_name>')
 
 
 class IsHeavy(Predicate):
-    def __call__(self, obj):
-        try:
-            return self.domain['db'][obj]['mass'] > 10.0
-        except KeyError:
-            return False
+    def __call__(self, name):
+        obj = self.world.objects(name=name).first()
+        return obj is not None and obj.mass > 10.0
 
 
 class IsHeld(Predicate):
-    def __call__(self, obj):
-        try:
-            return self.db[obj]['held']
-        except KeyError:
-            return False
+    def __call__(self, name):
+        obj = self.world.objects(name=name).first()
+        return obj is not None and obj.location is None
 
 
 class IsHolding(Predicate):
-    def __call__(self, obj):
-        try:
-            return self.db[obj]['holding']
-        except KeyError:
-            return False
+    def __call__(self, name):
+        obj = self.world.objects(name=name).first()
+        return obj is not None
 
 
 class PickUp(Action):
     def __call__(self, player, obj):
-        self.db[obj]['held'] = True
-        self.db[obj]['x'] = None
-        self.db[obj]['y'] = None
+        obj = self.world.objects(name=obj).first()
+        obj.held = True
+        obj.location = None
+        obj.save()
 
     def pre(self, player, obj):
         return ~IsHeld(obj=obj) & ~IsHeavy(obj=obj) & ~IsHolding(obj=player)

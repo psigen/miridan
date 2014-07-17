@@ -49,7 +49,7 @@ class WorldObjectView(Resource):
             obj.save()
             return obj.to_json(), 201
         except (InvalidQueryError, OperationError, ValidationError), e:
-            abort(400, message=str(e))
+            abort(400, message=repr(e))
 
     def delete(self, name):
         WorldObject.objects(name=name).delete()
@@ -63,7 +63,7 @@ class WorldObjectView(Resource):
             return obj.to_json(), 201
         except ValidationError, e:
             print request.json
-            abort(400, message=str(e))
+            abort(400, message=repr(e))
 
 api.add_resource(WorldView, '/world')
 api.add_resource(WorldObjectView, '/world/<name>')
