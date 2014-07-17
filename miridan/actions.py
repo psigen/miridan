@@ -2,6 +2,7 @@
 Module that defines all actions in this world.
 """
 from miridan.predicates import *
+from miridan import database
 import inspect
 
 
@@ -9,10 +10,8 @@ class Action(object):
     """
     Base class for all actions.
     """
-    def __init__(self, database):
-        self._database = database
-        self.pre = Predicate(self._database)
-        self.post = Predicate(self._database)
+    def __init__(self):
+        pass
 
     def __call__(self, **kwargs):
         """
@@ -20,18 +19,24 @@ class Action(object):
         """
         pass
 
+    def pre(self, **kwargs):
+        return Predicate()
+
+    def post(self, **kwargs):
+        return Predicate()
+
 
 class PickUp(Action):
-    def __call__(self, obj):
-        self._database[obj]['held'] = True
-        self._database[obj]['x'] = None
-        self._database[obj]['y'] = None
+    def __call__(self, player, obj):
+        database[obj]['held'] = True
+        database[obj]['x'] = None
+        database[obj]['y'] = None
 
-    def pre(self, obj):
-        return ~IsHeld(obj=obj) & ~IsHeavy(obj=obj)
+    def pre(self, player, obj):
+        return ~IsHeld(obj=obj) & ~IsHeavy(obj=obj) & ~IsHolding(obj=player)
 
-    def post(self, obj):
-        return IsHeld(obj=obj)
+    def post(self, player, obj):
+        return IsHeld(obj=obj) & IsHolding(obj=player)
 
 
 def load(database):
@@ -42,5 +47,5 @@ def load(database):
     g = globals().copy()
     for name, obj in g.iteritems():
         if inspect.isclass(obj) and issubclass(obj, Action):
-            table[name] = obj(database)
+            table[name] = obj()
     return table

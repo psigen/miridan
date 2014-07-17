@@ -40,7 +40,6 @@ def action(action_name=None):
 
         if action.pre(**args):
             action(**args)
-            action.post.apply(**args)
             return jsonify(action=action_name,
                            args=args,
                            result=action.post(**args))
@@ -70,6 +69,6 @@ def predicate(predicate_name=None):
 
         return jsonify(predicate=predicate_name,
                        args=args,
-                       result=predicate(**request.args))
+                       result=predicate(**args))
     except KeyError:
         abort(404)
