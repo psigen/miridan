@@ -1,8 +1,7 @@
 """
 Module that defines all predicates in this world.
 """
-from miridan import database
-import inspect
+from pddlpy.domain import Domain
 
 
 class BasePredicate(object):
@@ -12,6 +11,10 @@ class BasePredicate(object):
     def __init__(self, **kwargs):
         self.args = kwargs
         self.__call__ = self.__class__.__nonzero__
+
+    @property
+    def domain(self):
+        return Domain.root
 
     def __nonzero__(self):
         """
@@ -65,15 +68,3 @@ class NotPredicate(BasePredicate):
 
 class Predicate(BasePredicate):
     pass
-
-
-def load():
-    """
-    Load all the predicates into a dictionary.
-    """
-    table = {}
-    g = globals().copy()
-    for name, obj in g.iteritems():
-        if inspect.isclass(obj) and issubclass(obj, Predicate):
-            table[name] = obj()
-    return table

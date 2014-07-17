@@ -2,7 +2,7 @@
 Module that defines all actions in this world.
 """
 from pddlpy.predicate import Predicate
-import inspect
+from pddlpy.domain import Domain
 
 
 class Action(object):
@@ -11,6 +11,10 @@ class Action(object):
     """
     def __init__(self):
         pass
+
+    @property
+    def domain(self):
+        return Domain.root
 
     def __call__(self, *args, **kwargs):
         """
@@ -23,15 +27,3 @@ class Action(object):
 
     def post(self, *args, **kwargs):
         return Predicate()
-
-
-def load(database):
-    """
-    Load all the actions into a dictionary.
-    """
-    table = {}
-    g = globals().copy()
-    for name, obj in g.iteritems():
-        if inspect.isclass(obj) and issubclass(obj, Action):
-            table[name] = obj()
-    return table

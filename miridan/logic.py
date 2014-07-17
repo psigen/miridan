@@ -3,28 +3,11 @@ from miridan import db
 
 from flask import jsonify, request, abort
 from pddlpy import Predicate, Action, Domain
-
-actions = miridan.actions.load(database)
-predicates = miridan.predicates.load(database)
+import inspect
 
 
-@app.route('/object/')
-@app.route('/objects/')
-def list_objects():
-    return jsonify(objects=database)
-
-
-@app.route('/object/<object_name>')
-@app.route('/objects/<object_name>')
-def show_object(object_name):
-    try:
-        return jsonify(object=database[object_name])
-    except KeyError:
-        abort(404)
-
-
-@app.route('/action/')
-@app.route('/actions/')
+@app.route('/action')
+@app.route('/actions')
 def list_actions():
     # TODO: provide args
     return jsonify(actions=actions.keys())
@@ -53,8 +36,8 @@ def action(action_name=None):
         abort(404)
 
 
-@app.route('/predicate/')
-@app.route('/predicates/')
+@app.route('/predicate')
+@app.route('/predicates')
 def list_predicates():
     # TODO: provide predicates
     return jsonify(predicates=predicates.keys())
@@ -78,7 +61,7 @@ def predicate(predicate_name=None):
 class IsHeavy(Predicate):
     def __call__(self, obj):
         try:
-            return self.db[obj]['mass'] > 10.0
+            return self.domain['db'][obj]['mass'] > 10.0
         except KeyError:
             return False
 
@@ -110,3 +93,31 @@ class PickUp(Action):
 
     def post(self, player, obj):
         return IsHeld(obj=obj) & IsHolding(obj=player)
+
+
+def load_predicates():
+    """
+    Load all the predicates into a dictionary.
+    """
+    table = {}
+    g = globals().copy()
+    for name, obj in g.iteritems():
+        if inspect.isclass(obj) and issubclass(obj, Predicate):
+            table[name] = obj()
+    return table
+
+
+def load_actions():
+    """
+    Load all the actions into a dictionary.
+    """
+    table = {}
+    g = globals().copy()
+    for name, obj in g.iteritems():
+        if inspect.isclass(obj) and issubclass(obj, Action):
+            table[name] = obj()
+    return table
+
+
+actions = load_actions()
+predicates = load_predicates()
