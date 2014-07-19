@@ -80,7 +80,7 @@ class PlayerWorldView(Resource):
             player.save()
             if player.container is None:
                 abort(404, message="Player world does not exist.")
-        world = World.objects.with_id(player.container.id)
+        world = Entity.objects.with_id(player.container.id)
 
         return jsonify({"world": world.to_dict(),
                         "entities": [e.to_dict() for e in

@@ -74,11 +74,21 @@ api.add_resource(ActionView, '/action')
 
 
 class ActionEval(Resource):
+
+    # TODO: This alias should be removed.
     @login_required
     def get(self, action_name):
+        return self.put(action_name)
+
+    @login_required
+    def put(self, action_name):
         try:
             with Domain(world=Entity):
-                action = actions[action_name]
+                try:
+                    action = actions[action_name]
+                except KeyError, e:
+                    abort(404, message="Action '{}' was not found."
+                          .format(action_name))
                 args = {name: arg for (name, arg) in request.args.iteritems()}
 
                 if action.pre(**args):
@@ -101,12 +111,18 @@ class ActionEval(Resource):
                                    result=False,
                                    reason="Precondition: {}"
                                           .format(success.why()))
-        except KeyError, e:
-            abort(404, message="Action '{}' was not found."
-                  .format(action_name))
-        except (TypeError, AttributeError), e:
+        except (TypeError, AttributeError, KeyError), e:
             abort(400, message=repr(e))
 api.add_resource(ActionEval, '/action/<action_name>')
+
+
+class IsEqual(Predicate):
+    def __call__(self, obj1, obj2):
+        return obj1 == obj2
+
+    def __str__(self):
+        return "{} must be same as {}".format(self.args['obj1'],
+                                              self.args['obj2'])
 
 
 class IsHeavy(Predicate):
@@ -148,6 +164,21 @@ class IsObject(Predicate):
         return "{} must be your player".format(self.args['player'])
 
 
+class Teleport(Action):
+    def __call__(self, player):
+        player = Player.objects.with_id(player)
+        world = World.objects.first()
+
+        player.container = world
+        player.save()
+
+        message("{player} teleported to {world}."
+                .format(player=player.id, world=world.id))
+
+    def pre(self, player):
+        return IsMyPlayer(player=player)
+
+
 class PickUp(Action):
     def __call__(self, player, obj):
         obj = Entity.objects.with_id(obj)
@@ -164,10 +195,32 @@ class PickUp(Action):
         return (IsObject(obj=obj)
                 & ~IsHeld(player=player, obj=obj)
                 & ~IsHeavy(obj=obj)
+                & ~IsEqual(obj1=player, obj2=obj)
                 & IsMyPlayer(player=player))
 
     def post(self, player, obj):
         return IsHeld(player=player, obj=obj)
+
+
+class Drop(Action):
+    def __call__(self, player, obj):
+        obj = Entity.objects.with_id(obj)
+        player = Player.objects.with_id(player)
+
+        obj.location = None
+        obj.container = player.container
+        obj.save()
+
+        message("{player} is dropping {obj}."
+                .format(player=player.id, obj=obj.id))
+
+    def pre(self, player, obj):
+        return (IsObject(obj=obj)
+                & IsHeld(player=player, obj=obj)
+                & IsMyPlayer(player=player))
+
+    def post(self, player, obj):
+        return ~IsHeld(player=player, obj=obj)
 
 
 def load_predicates():
