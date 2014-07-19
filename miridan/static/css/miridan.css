@@ -1,0 +1,13 @@
+#entity-list {
+  height: 600px;
+  overflow:scroll;
+}
+
+#log-window {
+	height: 550px;
+	overflow: scroll;
+}
+
+#input-element {
+	width: 80%;
+}
