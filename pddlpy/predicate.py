@@ -61,7 +61,7 @@ class AndPredicate(BasePredicate):
         self.__call__ = self.__class__.__nonzero__
 
     def __nonzero__(self):
-        return self.left() & self.right()
+        return bool(self.left) & bool(self.right)
 
     def why(self):
         return self.left.why() or self.right.why()
@@ -73,7 +73,7 @@ class NotPredicate(BasePredicate):
         self.__call__ = self.__class__.__nonzero__
 
     def __nonzero__(self):
-        return ~self.inner()
+        return ~bool(self.inner)
 
     def why(self):
         return str(self) if not self else None  # TODO: fix this
