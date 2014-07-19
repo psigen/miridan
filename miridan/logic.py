@@ -1,15 +1,32 @@
 from miridan import api
+from miridan import db
 from miridan.world import Entity
+from miridan.users import User
 
 from flask import jsonify, request
 from flask.ext.restful import Resource, abort
+from flask.ext.security import login_required
 from pddlpy import Predicate, Action, Domain
 import inspect
 
 
+class Log(db.Document):
+    meta = {'max_documents': 1000}
+    user = db.ReferenceField(User, dbref=False)
+    message = db.StringField(max_length=255)
+
+
 def get_args(fn):
-  return [arg for arg in inspect.getargspec(fn)[0]
-          if arg != "self"]
+    return [arg for arg in inspect.getargspec(fn)[0]
+            if arg != "self"]
+
+
+class LogView(Resource):
+    def get(self):
+        logs = [{"user": log.user.id, "message": log.message}
+                for log in Log.objects]
+        return jsonify(logs)
+api.add_resource(LogView, '/log')
 
 
 class PredicateView(Resource):
@@ -17,9 +34,11 @@ class PredicateView(Resource):
         predicate_dict = {k: get_args(v.__call__)
                           for (k, v) in predicates.iteritems()}
         return jsonify(predicates=predicate_dict)
+api.add_resource(PredicateView, '/predicate')
 
 
 class PredicateEval(Resource):
+    @login_required
     def get(self, predicate_name):
         try:
             with Domain(world=Entity):
@@ -34,6 +53,7 @@ class PredicateEval(Resource):
                                .format(predicate_name))
         except (TypeError, AttributeError), e:
             abort(400, message=repr(e))
+api.add_resource(PredicateEval, '/predicate/<predicate_name>')
 
 
 class ActionView(Resource):
@@ -42,9 +62,11 @@ class ActionView(Resource):
                        for (k, v) in actions.iteritems()}
         return jsonify(actions=action_dict)
         return jsonify(actions=actions.keys())
+api.add_resource(ActionView, '/action')
 
 
 class ActionEval(Resource):
+    @login_required
     def get(self, action_name):
         try:
             with Domain(world=Entity):
@@ -53,9 +75,10 @@ class ActionEval(Resource):
 
                 if action.pre(**args):
                     action(**args)
+                    Log(user=User.current().id, message=str(action)).save()
                     return jsonify(action=action_name,
                                    args=args,
-                                   result=action.post(**args))
+                                   result=bool(action.post(**args)))
                 else:
                     action(request.args)
                     return jsonify(action=action_name,
@@ -65,29 +88,24 @@ class ActionEval(Resource):
         except KeyError:
             abort(404, message="Action '{}' was not found.'"
                                .format(action_name))
-
-
-api.add_resource(PredicateView, '/predicate')
-api.add_resource(PredicateEval, '/predicate/<predicate_name>')
-api.add_resource(ActionView, '/action')
 api.add_resource(ActionEval, '/action/<action_name>')
 
 
 class IsHeavy(Predicate):
-    def __call__(self, name):
-        obj = self.world.objects(name=name).first()
-        return obj is not None and obj.mass > 10.0
+    def __call__(self, obj):
+        obj = self.world.objects(name=obj).first()
+        return obj is not None
 
 
 class IsHeld(Predicate):
-    def __call__(self, name):
-        obj = self.world.objects(name=name).first()
+    def __call__(self, obj):
+        obj = self.world.objects(name=obj).first()
         return obj is not None and obj.location is None
 
 
 class IsHolding(Predicate):
-    def __call__(self, name):
-        obj = self.world.objects(name=name).first()
+    def __call__(self, obj):
+        obj = self.world.objects(name=obj).first()
         return obj is not None
 
 
