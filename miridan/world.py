@@ -1,5 +1,6 @@
 from miridan import db
 from miridan import api
+from miridan import app
 from miridan.users import User
 
 from flask import request, jsonify, send_file
@@ -14,20 +15,15 @@ from mongoengine.errors import InvalidQueryError, OperationError
 VIEW_RADIUS = 20
 
 
-class World(db.Document):
-    name = db.StringField(primary_key=True)
-
-    def to_dict(self):
-        return {"name": self.name}
-
-
 class Entity(db.Document):
     meta = {'allow_inheritance': True}
     location = db.PointField()
     name = db.StringField(primary_key=True)
+    mass = db.FloatField(min_value=0.0, default=0.0)
     description = db.StringField()
     image = db.ImageField()
-    world = db.ReferenceField(World, dbref=False)
+    container = db.ReferenceField('self', dbref=False,
+                                  reverse_delete_rule='NULLIFY')
 
     def to_dict(self):
         return {
@@ -47,8 +43,17 @@ class Entity(db.Document):
             self.image.put(image_file)
 
 
+class World(Entity):
+    pass
+
+
 class Player(Entity):
     user = db.ReferenceField(User, dbref=False)
+
+
+@app.before_first_request
+def create_default_world():
+    World(name='Worldy').save()
 
 
 class PlayerWorldView(Resource):
@@ -68,16 +73,16 @@ class PlayerWorldView(Resource):
             player.save()
 
         # Retrieve the world that this player is currently in.
-        if player.world is None:
-            player.world = World.objects.first()
+        if player.container is None:
+            player.container = World.objects.first()
             player.save()
-            if player.world is None:
+            if player.container is None:
                 abort(404, message="Player world does not exist.")
-        world = World.objects.with_id(player.world.id)
+        world = World.objects.with_id(player.container.id)
 
         return jsonify({"world": world.to_dict(),
-                        "entities": [e.to_dict()
-                                     for e in Entity.objects(world=world.id)]})
+                        "entities": [e.to_dict() for e in
+                                     Entity.objects(container=world.id)]})
 api.add_resource(PlayerWorldView, '/world')
 
 
@@ -118,8 +123,8 @@ class WorldView(Resource):
             abort(404, message="World '{}' does not exist.".format(name))
 
         return jsonify({"world": world.to_dict(),
-                        "entities": [e.to_dict()
-                                     for e in Entity.objects(world=world.id)]})
+                        "entities": [e.to_dict() for e in
+                                     Entity.objects(container=world.id)]})
 
     def put(self, name):
         """
@@ -146,6 +151,9 @@ class EntityView(Resource):
     def patch(self, name):
         try:
             obj = Entity.objects(name=name).first()
+            if obj is None:
+                abort(404, message="Entity '{}' does not exist."
+                                   .format(obj))
 
             if 'image' in request.json:
                 obj.load_image_from_url(request.json['image'])
@@ -169,8 +177,10 @@ class EntityView(Resource):
         try:
             request.json['name'] = name
 
-            image_url = request.json.get('image')
-            del request.json['image']
+            image_url = None
+            if 'image' in request.json:
+                image_url = request.json['image']
+                del request.json['image']
 
             obj = Entity(**request.json)
 

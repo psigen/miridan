@@ -1,6 +1,6 @@
 from miridan import api
 from miridan import db
-from miridan.world import Entity
+from miridan.world import Entity, Player, World
 from miridan.users import User
 
 from flask import jsonify, request
@@ -8,6 +8,13 @@ from flask.ext.restful import Resource, abort
 from flask.ext.security import login_required
 from pddlpy import Predicate, Action, Domain
 import inspect
+
+
+def message(msg, user=None):
+    """
+    Sends a string message to the engine log.
+    """
+    Log(user=user, message=msg).save()
 
 
 class Log(db.Document):
@@ -76,7 +83,6 @@ class ActionEval(Resource):
 
                 if action.pre(**args):
                     action(**args)
-                    Log(user=User.current().id, message=str(action)).save()
                     return jsonify(action=action_name,
                                    args=args,
                                    result=bool(action.post(**args)))
@@ -89,48 +95,70 @@ class ActionEval(Resource):
         except KeyError:
             abort(404, message="Action '{}' was not found.'"
                                .format(action_name))
+        except (TypeError, AttributeError), e:
+            abort(400, message=repr(e))
 api.add_resource(ActionEval, '/action/<action_name>')
 
 
 class IsHeavy(Predicate):
     def __call__(self, obj):
-        obj = self.world.objects(name=obj).first()
-        return obj is not None
+        obj = Entity.objects.with_id(obj)
+        return obj is not None and obj.mass > 10.0
 
     def __str__(self):
-        return "{} must be heavy".format(self.args["obj"])
+        return "{} must be heavy".format(self.args['obj'])
 
 
 class IsHeld(Predicate):
-    def __call__(self, obj):
-        obj = self.world.objects(name=obj).first()
-        return obj is not None and obj.location is None
+    def __call__(self, player, obj):
+        player = Player.objects.with_id(player)
+        obj = Entity.objects.with_id(obj)
+        return (player is not None
+                and obj is not None
+                and obj.container is player)
 
     def __str__(self):
-        return "{} must be held".format(self.args["obj"])
+        return "{} must be held".format(self.args['obj'])
 
 
-class IsHolding(Predicate):
+class IsMyPlayer(Predicate):
+    def __call__(self, player):
+        player = Player.objects.with_id(player)
+        return player is not None and player.user.id == User.current().id
+
+    def __str__(self):
+        return "{} must be your player".format(self.args['player'])
+
+
+class IsObject(Predicate):
     def __call__(self, obj):
-        obj = self.world.objects(name=obj).first()
+        obj = Entity.objects.with_id(obj)
         return obj is not None
 
     def __str__(self):
-        return "{} must be holding".format(self.args["obj"])
+        return "{} must be your player".format(self.args['player'])
 
 
 class PickUp(Action):
     def __call__(self, player, obj):
-        obj = self.world.objects(name=obj).first()
-        obj.held = True
+        obj = Entity.objects.with_id(obj)
+        player = Player.objects.with_id(player)
+
         obj.location = None
+        obj.container = player.id
         obj.save()
 
+        message("{Player} is picking up {obj}."
+                .format(player=player, obj=obj))
+
     def pre(self, player, obj):
-        return ~IsHeld(obj=obj) & ~IsHeavy(obj=obj) & ~IsHolding(obj=player)
+        return (IsObject(obj=obj)
+                & ~IsHeld(player=player, obj=obj)
+                & ~IsHeavy(obj=obj)
+                & IsMyPlayer(obj=player))
 
     def post(self, player, obj):
-        return IsHeld(obj=obj) & IsHolding(obj=player)
+        return IsHeld(player=player, obj=obj)
 
 
 def load_predicates():
