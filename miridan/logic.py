@@ -83,15 +83,24 @@ class ActionEval(Resource):
 
                 if action.pre(**args):
                     action(**args)
-                    return jsonify(action=action_name,
-                                   args=args,
-                                   result=bool(action.post(**args)))
+                    success = action.post(**args)
+                    if success:
+                        return jsonify(action=action_name,
+                                       args=args,
+                                       result=True)
+                    else:
+                        return jsonify(action=action_name,
+                                       args=args,
+                                       result=False,
+                                       reason="Postcondition: {}"
+                                              .format(success.why()))
                 else:
                     action(request.args)
                     return jsonify(action=action_name,
                                    args=args,
                                    result=False,
-                                   reason="Preconditions not met.")
+                                   reason="Precondition: {}"
+                                          .format(success.why()))
         except KeyError, e:
             abort(404, message="Action '{}' was not found."
                   .format(action_name))
@@ -115,7 +124,7 @@ class IsHeld(Predicate):
         obj = Entity.objects.with_id(obj)
         return (player is not None
                 and obj is not None
-                and obj.container is player)
+                and obj.container == player)
 
     def __str__(self):
         return "{} must be held".format(self.args['obj'])
