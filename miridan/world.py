@@ -2,11 +2,12 @@ from miridan import db
 from miridan import api
 from miridan.users import User
 
-from flask import request, jsonify
-from flask.json import loads
+from flask import request, jsonify, send_file
 from flask.ext.security import login_required
 from flask.ext.restful import Resource, abort
 from flask.ext.mongoengine import ValidationError
+import urllib2
+import io
 from mongoengine.errors import InvalidQueryError, OperationError
 
 
@@ -16,6 +17,9 @@ VIEW_RADIUS = 20
 class World(db.Document):
     name = db.StringField(primary_key=True)
 
+    def to_dict(self):
+        return {"name": self.name}
+
 
 class Entity(db.Document):
     meta = {'allow_inheritance': True}
@@ -24,6 +28,23 @@ class Entity(db.Document):
     description = db.StringField()
     image = db.ImageField()
     world = db.ReferenceField(World, dbref=False)
+
+    def to_dict(self):
+        return {
+            "name": self.name,
+            "image": self.image_url,
+            "description": self.description
+        }
+
+    @property
+    def image_url(self):
+        return '/entity/{}/image'.format(self.name)
+
+    def load_image_from_url(self, url):
+        image_file = io.BytesIO(urllib2.urlopen(url).read())
+        if image_file:
+            self.image.delete()
+            self.image.put(image_file)
 
 
 class Player(Entity):
@@ -54,10 +75,25 @@ class PlayerWorldView(Resource):
                 abort(404, message="Player world does not exist.")
         world = World.objects.with_id(player.world.id)
 
-        return jsonify({"world": loads(world.to_json()),
-                        "entities": loads(Entity.objects(world=world.id)
-                                          .to_json())})
+        return jsonify({"world": world.to_dict(),
+                        "entities": [e.to_dict()
+                                     for e in Entity.objects(world=world.id)]})
 api.add_resource(PlayerWorldView, '/world')
+
+
+class PlayerEntityImageView(Resource):
+    @login_required
+    def get(self, name):
+        """
+        Return the image associated with a given entity.
+        """
+        # TODO: verify that the player should see this image at all.
+        obj = Entity.objects.with_id(name)
+        if obj is None:
+            abort(404, message="Entity '{}' does not exist.".format(name))
+        #return send_file(obj.image, mimetype=obj.image.content_type)
+        return send_file(obj.image, mimetype='image/png')
+api.add_resource(PlayerEntityImageView, '/entity/<name>/image')
 
 
 class WorldList(Resource):
@@ -65,7 +101,7 @@ class WorldList(Resource):
         """
         Return the list of all available worlds.
         """
-        return jsonify({"worlds": loads(World.objects.only("name").to_json())})
+        return jsonify({"worlds": [w.name for w in World.objects]})
 api.add_resource(WorldList, '/admin/world')
 
 
@@ -81,9 +117,9 @@ class WorldView(Resource):
         if world is None:
             abort(404, message="World '{}' does not exist.".format(name))
 
-        return jsonify({"world": loads(world.to_json()),
-                        "entities": loads(Entity.objects(world=world.id)
-                                          .to_json())})
+        return jsonify({"world": world.to_dict(),
+                        "entities": [e.to_dict()
+                                     for e in Entity.objects(world=world.id)]})
 
     def put(self, name):
         """
@@ -104,15 +140,22 @@ class EntityView(Resource):
     def get(self, name):
         obj = Entity.objects(name=name).first()
         if obj is not None:
-            return obj.to_json()
+            return jsonify(obj.to_dict())
         abort(404, message="Entity '{}' does not exist.".format(name))
 
     def patch(self, name):
         try:
             obj = Entity.objects(name=name).first()
+
+            if 'image' in request.json:
+                obj.load_image_from_url(request.json['image'])
+                del request.json['image']
+
             update_fields = {'set__'+key: value
                              for (key, value) in request.json.iteritems()}
-            obj.update(**update_fields)
+            if update_fields:
+                obj.update(**update_fields)
+
             obj.save()
             return obj.to_json(), 201
         except (InvalidQueryError, OperationError, ValidationError), e:
@@ -125,7 +168,15 @@ class EntityView(Resource):
     def put(self, name):
         try:
             request.json['name'] = name
+
+            image_url = request.json.get('image')
+            del request.json['image']
+
             obj = Entity(**request.json)
+
+            if image_url is not None:
+                obj.load_image_from_url(image_url)
+
             obj.save()
             return obj.to_json(), 201
         except ValidationError, e:
