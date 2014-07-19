@@ -8,6 +8,7 @@
 
     <!-- Bootstrap -->
     <script src="extjs/angular.min.js"></script>
+    <script src="extjs/ui-bootstrap.min.js"></script>
     <script src="js/controllers.js"></script>
     <link href="css/bootstrap.min.css" rel="stylesheet">
     <link href="css/miridan.css" rel="stylesheet">
@@ -29,7 +30,7 @@
             <li ng-repeat="entity in entities">
               {{entity.name}}
               <p>{{entity.description}}</p>
-              <img ng-src="images/{{entity.imageurl}}">
+              <img ng-src="images/{{entity.imageurl}}" ng-click="selectEntity(entity)">
             </li>
           </ul>
           <p>Inventory!</p>
@@ -50,17 +51,20 @@
           </ul>
         </div>
         <div ng-controller="InputController" id="input-window" class="col-md-8">
-          <form ng-submit="doaction()">
-            <input id="input-element" type="text" ng-model="text" name="text" />
-            <input type="submit" id="submit" value="Submit" />
-          </form>
+
+          <select ng-model="selectedAction" ng-options="action.name for action in possibleActions"></select>
+          <button ng-repeat="target in targets" ng-click="targets.splice($index, 1)" 
+          type="button" class="btn btn-default btn-sm">
+            <img ng-src="images/{{target.imageurl}}" tooltip="{{target.name}}">
+          </button>
+          <button tooltip="YES!!!" type="button" ng-click="doaction()" class="btn btn-primary" >DO IT!</button>
         </div>
       </div>
     </div>
 
     <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
-    <script src="extjs/jquery-2.1.1.min.js"></script>
+    <!-- <script src="extjs/jquery-2.1.1.min.js"></script> -->
     <!-- Include all compiled plugins (below), or include individual files as needed -->
-    <script src="extjs/bootstrap.min.js"></script>
+    <!-- <script src="extjs/bootstrap.min.js"></script> -->
   </body>
 </html>

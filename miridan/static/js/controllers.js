@@ -1,6 +1,6 @@
-var miridanApp = angular.module('miridanApp', []);
+var miridanApp = angular.module('miridanApp', ['ui.bootstrap']);
 
-miridanApp.controller('EntityListController', function ($scope) {
+miridanApp.controller('EntityListController', function ($scope, $rootScope) {
   $scope.entities = [
     {'name': 'Evil Chest',
      'description': 'It is a spooky evil chest!',
@@ -12,9 +12,14 @@ miridanApp.controller('EntityListController', function ($scope) {
      'description': 'A regular radish.',
      'imageurl': 'placeholder2.png'}
   ];
+
+  $scope.selectEntity = function(entity) {
+    console.log(entity);
+    $rootScope.$broadcast('selectTarget', entity);
+  };
 });
 
-miridanApp.controller('InventoryListController', function ($scope) {
+miridanApp.controller('InventoryListController', function ($scope, $rootScope) {
   $scope.entities = [
     {'name': 'Evil Chest',
      'description': 'It is a spooky evil chest!',
@@ -29,13 +34,17 @@ miridanApp.controller('InventoryListController', function ($scope) {
 });
 
 miridanApp.controller('InputController', function ($scope) {
-  $scope.whatever = 12;
+  $scope.targets = [];
+  $scope.possibleActions = [{'name': 'explode'}, {'name': 'hug'}];
+  $scope.selectedAction = $scope.possibleActions[0];
+
+  $scope.$on('selectTarget', function(event, newtarget) {
+    console.log(newtarget);
+    $scope.targets.push(newtarget);
+  });
 
   $scope.doaction = function() {
-  	if($scope.text) {
-  		console.log("Going to try taking an action! " + $scope.text);
-  		$scope.text = "";
-  	}
+  	console.log("Going to try taking an action! " + $scope.selectedAction.name + ":" + $scope.targets);
   };
 });
 
