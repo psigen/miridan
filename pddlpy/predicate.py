@@ -51,7 +51,7 @@ class BasePredicate(object):
         """
         Diagnostic function to determine why a predicate failed.
         """
-        return str(self) if self else None
+        return str(self)
 
 
 class AndPredicate(BasePredicate):
@@ -64,7 +64,10 @@ class AndPredicate(BasePredicate):
         return bool(self.left) & bool(self.right)
 
     def why(self):
-        return self.left.why() or self.right.why()
+        if not self.left:
+            return self.left.why()
+        else:
+            return self.right.why()
 
 
 class NotPredicate(BasePredicate):
@@ -76,7 +79,7 @@ class NotPredicate(BasePredicate):
         return ~bool(self.inner)
 
     def why(self):
-        return str(self) if not self else None  # TODO: fix this
+        return "NOT(" + self.inner.why() + ")"
 
 
 class Predicate(BasePredicate):
