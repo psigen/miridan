@@ -18,6 +18,9 @@ class User(db.Document, UserMixin):
     confirmed_at = db.DateTimeField()
     roles = db.ListField(db.ReferenceField(Role), default=[])
 
+    @staticmethod
+    def current():
+        return current_user
 
 # Setup Flask-Security
 user_datastore = MongoEngineUserDatastore(db, User, Role)
