@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html ng-app="miridanApp" lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Miridan</title>
+
+    <!-- Bootstrap -->
+    <script src="extjs/angular.min.js"></script>
+    <script src="js/controllers.js"></script>
+    <link href="css/bootstrap.min.css" rel="stylesheet">
+    <link href="css/miridan.css" rel="stylesheet">
+    <!-- <link href="css/hexworld.css" rel="stylesheet"> -->
+
+    <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+      <script src="https://oss.maxcdn.com/html5shiv/3.7.2/html5shiv.min.js"></script>
+      <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+    <![endif]-->
+  </head>
+  <body>
+    <div class="container-fluid">
+      <div class="row">
+        <div id="entity-list" class="col-md-4">
+          <p>Entities!</p>
+          <ul ng-controller="EntityListController">
+            <li ng-repeat="entity in entities">
+              {{entity.name}}
+              <p>{{entity.description}}</p>
+              <img ng-src="images/{{entity.imageurl}}">
+            </li>
+          </ul>
+          <p>Inventory!</p>
+          <ul ng-controller="InventoryListController">
+            <li ng-repeat="entity in entities">
+              {{entity.name}}
+              <p>{{entity.description}}</p>
+              <img ng-src="images/{{entity.imageurl}}">
+            </li>
+          </ul>
+        </div>
+
+        <div ng-controller="LogController" id="log-window" class="col-md-8">
+          <ul>
+            <li ng-repeat="entry in logs">
+              {{entry.text}}
+            </li>
+          </ul>
+        </div>
+        <div ng-controller="InputController" id="input-window" class="col-md-8">
+          <form ng-submit="doaction()">
+            <input id="input-element" type="text" ng-model="text" name="text" />
+            <input type="submit" id="submit" value="Submit" />
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
+    <script src="extjs/jquery-2.1.1.min.js"></script>
+    <!-- Include all compiled plugins (below), or include individual files as needed -->
+    <script src="extjs/bootstrap.min.js"></script>
+  </body>
+</html>
