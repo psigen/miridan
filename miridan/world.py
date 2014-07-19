@@ -29,7 +29,9 @@ class Entity(db.Document):
         return {
             "name": self.name,
             "image": self.image_url,
-            "description": self.description
+            "description": self.description,
+            "container": "none" if self.container is None
+                         else self.container.id
         }
 
     @property
@@ -84,6 +86,27 @@ class PlayerWorldView(Resource):
                         "entities": [e.to_dict() for e in
                                      Entity.objects(container=world.id)]})
 api.add_resource(PlayerWorldView, '/world')
+
+
+class PlayerInventoryView(Resource):
+    @login_required
+    def get(self):
+        """
+        Return the contents of the world the player is currently in.
+        """
+        # Get the current player and their world.
+        user = User.current()
+
+        # If this user does not have a player, create one.
+        player = Player.objects(user=user.id).first()
+        if player is None:
+            abort(404, message="Player '{}' does not exist."
+                               .format(user.id))
+
+        # Retrieve the objects the player currently has.
+        return jsonify({"entities": [e.to_dict() for e in
+                                     Entity.objects(container=player.id)]})
+api.add_resource(PlayerInventoryView, '/inventory')
 
 
 class PlayerEntityImageView(Resource):
