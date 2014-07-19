@@ -3,12 +3,10 @@ from miridan import api
 from miridan import app
 from miridan.users import User
 
-from flask import request, jsonify, send_file
+from flask import request, jsonify
 from flask.ext.security import login_required
 from flask.ext.restful import Resource, abort
 from flask.ext.mongoengine import ValidationError
-import urllib2
-import io
 from mongoengine.errors import InvalidQueryError, OperationError
 
 
@@ -18,31 +16,23 @@ VIEW_RADIUS = 20
 class Entity(db.Document):
     meta = {'allow_inheritance': True}
     location = db.PointField()
-    name = db.StringField(primary_key=True)
+    name = db.StringField()
     mass = db.FloatField(min_value=0.0, default=0.0)
     description = db.StringField()
-    image = db.ImageField()
+    # TODO: This should really be a URL instead of string.
+    image = db.StringField(default='/static/images/placeholder0.png')
     container = db.ReferenceField('self', dbref=False,
                                   reverse_delete_rule='NULLIFY')
 
     def to_dict(self):
         return {
+            "_id": str(self.id),
             "name": self.name,
-            "image": self.image_url,
+            "image": self.image,
             "description": self.description,
             "container": "none" if self.container is None
-                         else self.container.id
+                         else str(self.container.id)
         }
-
-    @property
-    def image_url(self):
-        return '/entity/{}/image'.format(self.name)
-
-    def load_image_from_url(self, url):
-        image_file = io.BytesIO(urllib2.urlopen(url).read())
-        if image_file:
-            self.image.delete()
-            self.image.put(image_file)
 
 
 class World(Entity):
@@ -55,7 +45,10 @@ class Player(Entity):
 
 @app.before_first_request
 def create_default_world():
-    World(name='Worldy').save()
+    world = World(name='Worldy')
+    world.save()
+
+    Entity(name='beans', container=world.id).save()
 
 
 class PlayerWorldView(Resource):
@@ -109,21 +102,6 @@ class PlayerInventoryView(Resource):
 api.add_resource(PlayerInventoryView, '/inventory')
 
 
-class PlayerEntityImageView(Resource):
-    @login_required
-    def get(self, name):
-        """
-        Return the image associated with a given entity.
-        """
-        # TODO: verify that the player should see this image at all.
-        obj = Entity.objects.with_id(name)
-        if obj is None:
-            abort(404, message="Entity '{}' does not exist.".format(name))
-        #return send_file(obj.image, mimetype=obj.image.content_type)
-        return send_file(obj.image, mimetype='image/png')
-api.add_resource(PlayerEntityImageView, '/entity/<name>/image')
-
-
 class WorldList(Resource):
     def get(self):
         """
@@ -173,14 +151,10 @@ class EntityView(Resource):
 
     def patch(self, name):
         try:
-            obj = Entity.objects(name=name).first()
+            obj = Entity.objects.with_id(name)
             if obj is None:
                 abort(404, message="Entity '{}' does not exist."
                                    .format(obj))
-
-            if 'image' in request.json:
-                obj.load_image_from_url(request.json['image'])
-                del request.json['image']
 
             update_fields = {'set__'+key: value
                              for (key, value) in request.json.iteritems()}
@@ -199,17 +173,7 @@ class EntityView(Resource):
     def put(self, name):
         try:
             request.json['name'] = name
-
-            image_url = None
-            if 'image' in request.json:
-                image_url = request.json['image']
-                del request.json['image']
-
             obj = Entity(**request.json)
-
-            if image_url is not None:
-                obj.load_image_from_url(image_url)
-
             obj.save()
             return obj.to_json(), 201
         except ValidationError, e:

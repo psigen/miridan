@@ -8,6 +8,7 @@ from flask.ext.restful import Resource, abort
 from flask.ext.security import login_required
 from pddlpy import Predicate, Action, Domain
 import inspect
+from mongoengine.errors import ValidationError
 
 
 def message(msg, user=None):
@@ -111,9 +112,14 @@ class ActionEval(Resource):
                                    result=False,
                                    reason="Precondition: {}"
                                           .format(success.why()))
-        except (TypeError, AttributeError, KeyError), e:
+        except (TypeError, AttributeError, KeyError, ValidationError), e:
             abort(400, message=repr(e))
 api.add_resource(ActionEval, '/action/<action_name>')
+
+
+#########################
+# THE RULES OF THE GAME #
+#########################
 
 
 class IsEqual(Predicate):
@@ -131,7 +137,8 @@ class IsHeavy(Predicate):
         return obj is not None and obj.mass > 10.0
 
     def __str__(self):
-        return "{} must be heavy".format(self.args['obj'])
+        obj = Entity.objects.with_id(self.args['obj'])
+        return "{} must be heavy".format(obj.name)
 
 
 class IsHeld(Predicate):
@@ -143,7 +150,9 @@ class IsHeld(Predicate):
                 and obj.container == player)
 
     def __str__(self):
-        return "{} must be held".format(self.args['obj'])
+        player = Player.objects.with_id(self.args['player'])
+        obj = Entity.objects.with_id(self.args['obj'])
+        return "{} must be held by {}".format(obj.name, player.name)
 
 
 class IsMyPlayer(Predicate):
@@ -152,7 +161,8 @@ class IsMyPlayer(Predicate):
         return player is not None and player.user.id == User.current().id
 
     def __str__(self):
-        return "{} must be your player".format(self.args['player'])
+        player = Player.objects.with_id(self.args['player'])
+        return "{} must be your player".format(player.name)
 
 
 class IsObject(Predicate):
@@ -161,7 +171,8 @@ class IsObject(Predicate):
         return obj is not None
 
     def __str__(self):
-        return "{} must be your player".format(self.args['player'])
+        obj = Entity.objects.with_id(self.args['obj'])
+        return "{} must be your player".format(obj.name)
 
 
 class Teleport(Action):
@@ -173,7 +184,7 @@ class Teleport(Action):
         player.save()
 
         message("{player} teleported to {world}."
-                .format(player=player.id, world=world.id))
+                .format(player=player.name, world=world.name))
 
     def pre(self, player):
         return IsMyPlayer(player=player)
@@ -189,7 +200,7 @@ class PickUp(Action):
         obj.save()
 
         message("{player} is picking up {obj}."
-                .format(player=player.id, obj=obj.id))
+                .format(player=player.name, obj=obj.name))
 
     def pre(self, player, obj):
         return (IsObject(obj=obj)
@@ -212,7 +223,7 @@ class Drop(Action):
         obj.save()
 
         message("{player} is dropping {obj}."
-                .format(player=player.id, obj=obj.id))
+                .format(player=player.name, obj=obj.name))
 
     def pre(self, player, obj):
         return (IsObject(obj=obj)
