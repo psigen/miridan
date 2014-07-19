@@ -4,7 +4,7 @@ from miridan.users import User
 
 from flask import request, jsonify
 from flask.json import loads
-from flask.ext.security import login_required, current_user
+from flask.ext.security import login_required
 from flask.ext.restful import Resource, abort
 from flask.ext.mongoengine import ValidationError
 from mongoengine.errors import InvalidQueryError, OperationError
@@ -37,13 +37,13 @@ class PlayerWorldView(Resource):
         Return the contents of the world the player is currently in.
         """
         # Get the current player and their world.
-        user = current_user
+        user = User.current()
 
         # If this user does not have a player, create one.
         player = Player.objects(user=user.id).first()
         if player is None:
-            player = Player(name=current_user.email,
-                            user=current_user.id)
+            player = Player(name=user.email,
+                            user=user.id)
             player.save()
 
         # Retrieve the world that this player is currently in.
