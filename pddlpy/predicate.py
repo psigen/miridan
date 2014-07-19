@@ -58,7 +58,7 @@ class AndPredicate(BasePredicate):
     def __init__(self, left, right):
         self.left = left
         self.right = right
-        self.__call__ = self.__class__.__nonzero___
+        self.__call__ = self.__class__.__nonzero__
 
     def __nonzero__(self):
         return self.left() & self.right()
@@ -70,7 +70,7 @@ class AndPredicate(BasePredicate):
 class NotPredicate(BasePredicate):
     def __init__(self, inner):
         self.inner = inner
-        self.__call__ = self.__class__.__nonzero___
+        self.__call__ = self.__class__.__nonzero__
 
     def __nonzero__(self):
         return ~self.inner()
