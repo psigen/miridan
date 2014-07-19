@@ -1,8 +1,10 @@
 from miridan import db
 from miridan import api
+from miridan.users import User
 
-from flask import request
-from flask.ext.security import login_required, roles_required
+from flask import request, jsonify
+from flask.json import loads
+from flask.ext.security import login_required, current_user
 from flask.ext.restful import Resource, abort
 from flask.ext.mongoengine import ValidationError
 from mongoengine.errors import InvalidQueryError, OperationError
@@ -11,38 +13,90 @@ from mongoengine.errors import InvalidQueryError, OperationError
 VIEW_RADIUS = 20
 
 
-class WorldObject(db.Document):
+class World(db.Document):
+    name = db.StringField(primary_key=True)
+
+
+class Entity(db.Document):
+    meta = {'allow_inheritance': True}
     location = db.PointField()
     name = db.StringField(primary_key=True)
-    meta = {'allow_inheritance': True}
+    description = db.StringField()
+    image = db.ImageField()
+    world = db.ReferenceField(World, dbref=False)
 
 
-class Player(WorldObject):
-    pass
+class Player(Entity):
+    user = db.ReferenceField(User, dbref=False)
 
 
-class WorldView(Resource):
+class PlayerWorldView(Resource):
     @login_required
     def get(self):
         """
-        Return all the nearby objects to the player in the world.
+        Return the contents of the world the player is currently in.
         """
-        # TODO: figure out range from actual player object.
-        return WorldObject.objects(
-            location__geo_within_center=[(0, 0), VIEW_RADIUS]).to_json()
+        # Get the current player and their world.
+        user = current_user
+
+        # If this user does not have a player, create one.
+        player = Player.objects(user=user.id).first()
+        if player is None:
+            player = Player(name=current_user.email,
+                            user=current_user.id)
+            player.save()
+
+        # Retrieve the world that this player is currently in.
+        if player.world is None:
+            player.world = World.objects.first()
+            player.save()
+            if player.world is None:
+                abort(404, message="Player world does not exist.")
+        world = World.objects.with_id(player.world.id)
+
+        return jsonify({"world": loads(world.to_json()),
+                        "entities": loads(Entity.objects(world=player.world)
+                                          .to_json())})
+api.add_resource(PlayerWorldView, '/world')
+
+
+class WorldView(Resource):
+    def get(self, name):
+        """
+        Return the contents of an entire world.
+        """
+        world = World.objects(name=name).first()
+        if world is None:
+            abort(404, message="World '{}' does not exist.".format(name))
+
+        return jsonify({"name": world.to_json(),
+                        "entities": Entity.objects(world=world).to_json()})
+
+    def put(self, name):
+        """
+        Create a world with the given parameters.
+        """
+        try:
+            request.json['name'] = name
+            obj = World(**request.json)
+            obj.save()
+            return obj.to_json(), 201
+        except ValidationError, e:
+            abort(400, message=repr(e))
+api.add_resource(WorldView, '/admin/world/<name>')
 
 
 # TODO: add admin authentication to arbitrarily modify objects.
-class WorldObjectView(Resource):
+class EntityView(Resource):
     def get(self, name):
-        obj = WorldObject.objects(name=name).first()
+        obj = Entity.objects(name=name).first()
         if obj is not None:
             return obj.to_json()
-        abort(404, message="World object '{0}' does not exist.".format(name))
+        abort(404, message="Entity '{}' does not exist.".format(name))
 
     def patch(self, name):
         try:
-            obj = WorldObject.objects(name=name).first()
+            obj = Entity.objects(name=name).first()
             update_fields = {'set__'+key: value
                              for (key, value) in request.json.iteritems()}
             obj.update(**update_fields)
@@ -52,18 +106,15 @@ class WorldObjectView(Resource):
             abort(400, message=repr(e))
 
     def delete(self, name):
-        WorldObject.objects(name=name).delete()
+        Entity.objects(name=name).delete()
         return '', 204
 
     def put(self, name):
         try:
             request.json['name'] = name
-            obj = WorldObject(**request.json)
+            obj = Entity(**request.json)
             obj.save()
             return obj.to_json(), 201
         except ValidationError, e:
-            print request.json
             abort(400, message=repr(e))
-
-api.add_resource(WorldView, '/world')
-api.add_resource(WorldObjectView, '/world/<name>')
+api.add_resource(EntityView, '/admin/entity/<name>')

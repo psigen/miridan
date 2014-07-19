@@ -26,7 +26,7 @@ security = Security(app, user_datastore)
 
 # Create a user to test with
 @app.before_first_request
-def create_user():
+def create_default_users():
     user_datastore.create_user(email='psigen@gmail.com', password='moocow')
     user_datastore.find_or_create_role(name='admin',
                                        description='Administrator')

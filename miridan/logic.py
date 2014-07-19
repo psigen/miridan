@@ -1,5 +1,5 @@
 from miridan import api
-from miridan.world import WorldObject
+from miridan.world import Entity
 
 from flask import jsonify, request
 from flask.ext.restful import Resource, abort
@@ -15,7 +15,7 @@ class PredicateView(Resource):
 class PredicateEval(Resource):
     def get(self, predicate_name):
         try:
-            with Domain(world=WorldObject):
+            with Domain(world=Entity):
                 predicate = predicates[predicate_name]
                 args = {name: arg for (name, arg) in request.args.iteritems()}
 
@@ -37,7 +37,7 @@ class ActionView(Resource):
 class ActionEval(Resource):
     def get(self, action_name):
         try:
-            with Domain(world=WorldObject):
+            with Domain(world=Entity):
                 action = actions[action_name]
                 args = {name: arg for (name, arg) in request.args.iteritems()}
 
@@ -52,7 +52,7 @@ class ActionEval(Resource):
                                    args=args,
                                    result=False,
                                    reason="Preconditions not met.")
-        except KeyError, e:
+        except KeyError:
             abort(404, message="Action '{}' was not found.'"
                                .format(action_name))
 
