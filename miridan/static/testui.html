@@ -30,7 +30,7 @@
             <li ng-repeat="entity in entities">
               {{entity.name}}
               <p>{{entity.description}}</p>
-              <img ng-src="images/{{entity.imageurl}}" ng-click="selectEntity(entity)">
+              <img ng-src="images/{{entity.image}}" ng-click="selectEntity(entity)">
             </li>
           </ul>
           <p>Inventory!</p>
@@ -38,7 +38,7 @@
             <li ng-repeat="entity in entities">
               {{entity.name}}
               <p>{{entity.description}}</p>
-              <img ng-src="images/{{entity.imageurl}}">
+              <img ng-src="images/{{entity.image}}">
             </li>
           </ul>
         </div>
@@ -46,16 +46,16 @@
         <div ng-controller="LogController" id="log-window" class="col-md-8">
           <ul>
             <li ng-repeat="entry in logs">
-              {{entry.text}}
+              {{entry.message}}
             </li>
           </ul>
         </div>
         <div ng-controller="InputController" id="input-window" class="col-md-8">
 
-          <select ng-model="selectedAction" ng-options="action.name for action in possibleActions"></select>
-          <button ng-repeat="target in targets" ng-click="targets.splice($index, 1)" 
+          <select ng-model="selectedAction" ng-options="formatActionName(action) for action in possibleActions"></select>
+          <button ng-repeat="target in targets track by $index" ng-click="targets.splice($index, 1)" 
           type="button" class="btn btn-default btn-sm">
-            <img ng-src="images/{{target.imageurl}}" tooltip="{{target.name}}">
+            <img ng-src="images/{{target.image}}" tooltip="{{target.name}}">
           </button>
           <button tooltip="YES!!!" type="button" ng-click="doaction()" class="btn btn-primary" >DO IT!</button>
         </div>
