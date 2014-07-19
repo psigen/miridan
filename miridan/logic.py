@@ -55,7 +55,7 @@ class PredicateEval(Resource):
 
                 return jsonify(predicate=predicate_name,
                                args=args,
-                               result=predicate(**args))
+                               result=bool(predicate(**args)))
         except KeyError:
             abort(404, message="Predicate '{}' was not found."
                                .format(predicate_name))
@@ -231,7 +231,7 @@ def load_predicates():
     g = globals().copy()
     for name, obj in g.iteritems():
         if inspect.isclass(obj) and issubclass(obj, Predicate):
-            table[name] = obj()
+            table[name] = obj
     return table
 
 
