@@ -14,7 +14,6 @@ miridanApp.controller('EntityListController', function ($scope, $rootScope) {
   ];
 
   $scope.selectEntity = function(entity) {
-    console.log(entity);
     $rootScope.$broadcast('selectTarget', entity);
   };
 });
@@ -33,24 +32,30 @@ miridanApp.controller('InventoryListController', function ($scope, $rootScope) {
   ];
 });
 
-miridanApp.controller('InputController', function ($scope) {
+miridanApp.controller('InputController', function ($scope, $rootScope) {
   $scope.targets = [];
   $scope.possibleActions = [{'name': 'explode'}, {'name': 'hug'}];
   $scope.selectedAction = $scope.possibleActions[0];
 
   $scope.$on('selectTarget', function(event, newtarget) {
-    console.log(newtarget);
     $scope.targets.push(newtarget);
   });
 
   $scope.doaction = function() {
-  	console.log("Going to try taking an action! " + $scope.selectedAction.name + ":" + $scope.targets);
+    var actionstr = $scope.selectedAction.name;
+    for(var i = 0; i < $scope.targets.length; ++i) {
+      actionstr += (" [" + $scope.targets[i].name + "]");
+    }
+    $rootScope.$broadcast('addLogs', [{'text': actionstr}]);
   };
 });
 
 miridanApp.controller('LogController', function ($scope) {
-  $scope.logs = [];
-  for(var i = 0; i < 100; ++i) {
-  	$scope.logs.push({'text': "Blargh " + i})
-  }
+  $scope.logs = [{'text': 'WELCOM TO MIRIDAN!!!'}];
+
+  $scope.$on('addLogs', function(event, newlogs) {
+    for(var i = 0; i < newlogs.length; ++i) {
+      $scope.logs.push(newlogs[i]);
+    }
+  });
 });
