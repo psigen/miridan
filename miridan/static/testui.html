@@ -46,14 +46,14 @@
         <div ng-controller="LogController" id="log-window" class="col-md-8">
           <ul>
             <li ng-repeat="entry in logs">
-              {{entry.text}}
+              {{entry.message}}
             </li>
           </ul>
         </div>
         <div ng-controller="InputController" id="input-window" class="col-md-8">
 
-          <select ng-model="selectedAction" ng-options="action.name for action in possibleActions"></select>
-          <button ng-repeat="target in targets" ng-click="targets.splice($index, 1)" 
+          <select ng-model="selectedAction" ng-options="formatActionName(action) for action in possibleActions"></select>
+          <button ng-repeat="target in targets track by $index" ng-click="targets.splice($index, 1)" 
           type="button" class="btn btn-default btn-sm">
             <img ng-src="images/{{target.imageurl}}" tooltip="{{target.name}}">
           </button>
