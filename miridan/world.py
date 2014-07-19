@@ -55,9 +55,18 @@ class PlayerWorldView(Resource):
         world = World.objects.with_id(player.world.id)
 
         return jsonify({"world": loads(world.to_json()),
-                        "entities": loads(Entity.objects(world=player.world)
+                        "entities": loads(Entity.objects(world=world.id)
                                           .to_json())})
 api.add_resource(PlayerWorldView, '/world')
+
+
+class WorldList(Resource):
+    def get(self):
+        """
+        Return the list of all available worlds.
+        """
+        return jsonify({"worlds": loads(World.objects.only("name").to_json())})
+api.add_resource(WorldList, '/admin/world')
 
 
 class WorldView(Resource):
@@ -65,12 +74,16 @@ class WorldView(Resource):
         """
         Return the contents of an entire world.
         """
+        if name is None:
+            jsonify(World.objects.to_json())
+
         world = World.objects(name=name).first()
         if world is None:
             abort(404, message="World '{}' does not exist.".format(name))
 
-        return jsonify({"name": world.to_json(),
-                        "entities": Entity.objects(world=world).to_json()})
+        return jsonify({"world": loads(world.to_json()),
+                        "entities": loads(Entity.objects(world=world.id)
+                                          .to_json())})
 
     def put(self, name):
         """

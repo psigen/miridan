@@ -7,9 +7,16 @@ from pddlpy import Predicate, Action, Domain
 import inspect
 
 
+def get_args(fn):
+  return [arg for arg in inspect.getargspec(fn)[0]
+          if arg != "self"]
+
+
 class PredicateView(Resource):
     def get(self):
-        return jsonify(predicates=predicates.keys())
+        predicate_dict = {k: get_args(v.__call__)
+                          for (k, v) in predicates.iteritems()}
+        return jsonify(predicates=predicate_dict)
 
 
 class PredicateEval(Resource):
@@ -31,6 +38,9 @@ class PredicateEval(Resource):
 
 class ActionView(Resource):
     def get(self):
+        action_dict = {k: {"args": get_args(v.__call__)}
+                       for (k, v) in actions.iteritems()}
+        return jsonify(actions=action_dict)
         return jsonify(actions=actions.keys())
 
 
