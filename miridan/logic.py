@@ -75,7 +75,7 @@ api.add_resource(ActionView, '/action')
 
 class ActionEval(Resource):
     @login_required
-    def put(self, action_name):
+    def get(self, action_name):
         try:
             with Domain(world=Entity):
                 action = actions[action_name]
@@ -92,9 +92,9 @@ class ActionEval(Resource):
                                    args=args,
                                    result=False,
                                    reason="Preconditions not met.")
-        except KeyError:
-            abort(404, message="Action '{}' was not found.'"
-                               .format(action_name))
+        except KeyError, e:
+            abort(404, message="Action '{}' was not found."
+                  .format(action_name))
         except (TypeError, AttributeError), e:
             abort(400, message=repr(e))
 api.add_resource(ActionEval, '/action/<action_name>')
@@ -145,17 +145,17 @@ class PickUp(Action):
         player = Player.objects.with_id(player)
 
         obj.location = None
-        obj.container = player.id
+        obj.container = player
         obj.save()
 
-        message("{Player} is picking up {obj}."
+        message("{player} is picking up {obj}."
                 .format(player=player, obj=obj))
 
     def pre(self, player, obj):
         return (IsObject(obj=obj)
                 & ~IsHeld(player=player, obj=obj)
                 & ~IsHeavy(obj=obj)
-                & IsMyPlayer(obj=player))
+                & IsMyPlayer(player=player))
 
     def post(self, player, obj):
         return IsHeld(player=player, obj=obj)
