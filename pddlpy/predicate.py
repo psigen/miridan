@@ -9,8 +9,10 @@ class BasePredicate(object):
     Represents a predicate that already has grounded atoms.
     """
     def __init__(self, **kwargs):
-        self.args = kwargs
-        self.__call__ = self.__class__.__nonzero__
+        # TODO: fix this somehow?
+        if kwargs:
+            self.args = kwargs
+            self.__call__ = self.__class__.__nonzero__
 
     def __getattr__(self, item):
         """
@@ -38,6 +40,12 @@ class BasePredicate(object):
         Create a new joint predicate.
         """
         return NotPredicate(self)
+
+    def __call__(self, **kwargs):
+        """
+        Empty implementation of predicate is trivially true.
+        """
+        return True
 
     def why(self):
         """
