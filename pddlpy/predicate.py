@@ -9,10 +9,8 @@ class BasePredicate(object):
     Represents a predicate that already has grounded atoms.
     """
     def __init__(self, **kwargs):
-        # TODO: fix this somehow?
-        if kwargs:
-            self.args = kwargs
-            self.__call__ = self.__class__.__nonzero__
+        self.args = kwargs
+        self.__call__ = self.__class__.__nonzero__
 
     def __getattr__(self, item):
         """
