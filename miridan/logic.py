@@ -23,9 +23,10 @@ def get_args(fn):
 
 class LogView(Resource):
     def get(self):
-        logs = [{"user": log.user.id, "message": log.message}
+        logs = [{"user": log.user.email,
+                 "message": log.message}
                 for log in Log.objects]
-        return jsonify(logs)
+        return jsonify({"logs": logs})
 api.add_resource(LogView, '/log')
 
 
@@ -67,7 +68,7 @@ api.add_resource(ActionView, '/action')
 
 class ActionEval(Resource):
     @login_required
-    def get(self, action_name):
+    def put(self, action_name):
         try:
             with Domain(world=Entity):
                 action = actions[action_name]
@@ -96,17 +97,26 @@ class IsHeavy(Predicate):
         obj = self.world.objects(name=obj).first()
         return obj is not None
 
+    def __str__(self):
+        return "{} must be heavy".format(self.args["obj"])
+
 
 class IsHeld(Predicate):
     def __call__(self, obj):
         obj = self.world.objects(name=obj).first()
         return obj is not None and obj.location is None
 
+    def __str__(self):
+        return "{} must be held".format(self.args["obj"])
+
 
 class IsHolding(Predicate):
     def __call__(self, obj):
         obj = self.world.objects(name=obj).first()
         return obj is not None
+
+    def __str__(self):
+        return "{} must be holding".format(self.args["obj"])
 
 
 class PickUp(Action):
