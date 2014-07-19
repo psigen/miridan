@@ -14,7 +14,7 @@ def message(msg, user=None):
     """
     Sends a string message to the engine log.
     """
-    Log(user=user, message=msg).save()
+    Log(user=User.current().id, message=msg).save()
 
 
 class Log(db.Document):
@@ -149,7 +149,7 @@ class PickUp(Action):
         obj.save()
 
         message("{player} is picking up {obj}."
-                .format(player=player, obj=obj))
+                .format(player=player.id, obj=obj.id))
 
     def pre(self, player, obj):
         return (IsObject(obj=obj)
