@@ -12,9 +12,16 @@ class BasePredicate(object):
     def __init__(self, *args, **kwargs):
         argnames, _, _, _ = inspect.getargspec(self.__call__)
 
+        # Save positional arguments (by converting to keyword args)
         self.args = {}
         self.args.update(dict(zip(argnames, args)))
+
+        # Save keyword arguments (by validating against existing args)
         if kwargs is not None:
+            for (k, v) in kwargs.iteritems():
+                if k not in argnames:
+                    raise KeyError("Invalid argument '{}' for {}."
+                                   .format(k, self.__class__.name))
             self.args.update(kwargs)
 
         self.__call__ = self.__class__.__nonzero__

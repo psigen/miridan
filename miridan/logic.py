@@ -33,16 +33,18 @@ class PredicateEval(Resource):
     def get(self, predicate_name):
         try:
             with Scope(world=Entity):
-                predicate = GAME_DOMAIN.predicates[predicate_name]
+                try:
+                    predicate = GAME_DOMAIN.predicates[predicate_name]
+                except KeyError:
+                    abort(404, message="Predicate '{}' was not found."
+                          .format(predicate_name))
+
                 args = {name: arg for (name, arg) in request.args.iteritems()}
 
                 return jsonify(predicate=predicate_name,
                                args=args,
                                result=bool(predicate(**args)))
-        except KeyError:
-            abort(404, message="Predicate '{}' was not found."
-                               .format(predicate_name))
-        except (TypeError, AttributeError, ValidationError), e:
+        except (KeyError, TypeError, AttributeError, ValidationError), e:
             abort(400, message=repr(e))
 api.add_resource(PredicateEval, '/predicate/<predicate_name>')
 
@@ -94,6 +96,6 @@ class ActionEval(Resource):
                                    result=False,
                                    reason="Precondition: {}"
                                           .format(pre_success.why()))
-        except (AttributeError, KeyError, ValidationError), e:
+        except (TypeError, AttributeError, KeyError, ValidationError), e:
             abort(400, message=repr(e))
 api.add_resource(ActionEval, '/action/<action_name>')
