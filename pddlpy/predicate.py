@@ -8,8 +8,9 @@ class BasePredicate(object):
     """
     Represents a predicate that already has grounded atoms.
     """
-    def __init__(self, **kwargs):
-        self.args = kwargs
+    def __init__(self, *args, **kwargs):
+        self.args = args
+        self.kwargs = kwargs
         self.__call__ = self.__class__.__nonzero__
 
     def __getattr__(self, item):
@@ -25,7 +26,7 @@ class BasePredicate(object):
         """
         Evaluate this grounded predicate.
         """
-        return self.__class__.__call__(self, **self.args)
+        return self.__class__.__call__(self, *self.args, **self.kwargs)
 
     def __and__(self, other):
         """
