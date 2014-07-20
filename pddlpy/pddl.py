@@ -40,7 +40,7 @@ def action_to_pddl(action):
 
 
 def domain_to_pddl(domain):
-    name = domain.__class__.name
+    name = domain.name
     requirements = []
 
     constants_def = (None if not hasattr(domain, 'constants')
@@ -83,7 +83,7 @@ def domain_to_pddl(domain):
 
 def problem_to_pddl(problem):
     name = problem.name
-    domain_name = problem.domain.__class__.name
+    domain_name = problem.domain.name
     requirements = []
 
     object_declaration = "(:objects {})".format(' '.join([o

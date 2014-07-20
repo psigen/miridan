@@ -1,27 +1,13 @@
 from miridan import api
-from miridan import db
-from miridan.world import Entity, Player, World
-from miridan.users import User
+from miridan.rules import GAME_DOMAIN
+from miridan.world import Entity
 
 from flask import jsonify, request
 from flask.ext.restful import Resource, abort
 from flask.ext.security import login_required
-from pddlpy import Predicate, Action, Scope
+from pddlpy import Scope
 import inspect
 from mongoengine.errors import ValidationError
-
-
-def message(msg, user=None):
-    """
-    Sends a string message to the engine log.
-    """
-    Log(user=User.current().id, message=msg).save()
-
-
-class Log(db.Document):
-    meta = {'max_documents': 1000}
-    user = db.ReferenceField(User, dbref=False)
-    message = db.StringField(max_length=255)
 
 
 def get_args(fn):
@@ -29,19 +15,10 @@ def get_args(fn):
             if arg != "self"]
 
 
-class LogView(Resource):
-    def get(self):
-        logs = [{"user": log.user.email,
-                 "message": log.message}
-                for log in Log.objects]
-        return jsonify({"logs": logs})
-api.add_resource(LogView, '/log')
-
-
 class PredicateView(Resource):
     def get(self):
         predicate_dict = {k: get_args(v.__call__)
-                          for (k, v) in predicates.iteritems()}
+                          for (k, v) in GAME_DOMAIN.predicates.iteritems()}
         return jsonify(predicates=predicate_dict)
 api.add_resource(PredicateView, '/predicate')
 
@@ -51,7 +28,7 @@ class PredicateEval(Resource):
     def get(self, predicate_name):
         try:
             with Scope(world=Entity):
-                predicate = predicates[predicate_name]
+                predicate = GAME_DOMAIN.predicates[predicate_name]
                 args = {name: arg for (name, arg) in request.args.iteritems()}
 
                 return jsonify(predicate=predicate_name,
@@ -68,9 +45,9 @@ api.add_resource(PredicateEval, '/predicate/<predicate_name>')
 class ActionView(Resource):
     def get(self):
         action_dict = {k: {"args": get_args(v.__call__)}
-                       for (k, v) in actions.iteritems()}
+                       for (k, v) in GAME_DOMAIN.actions.iteritems()}
         return jsonify(actions=action_dict)
-        return jsonify(actions=actions.keys())
+        return jsonify(actions=GAME_DOMAIN.actions.keys())
 api.add_resource(ActionView, '/action')
 
 
@@ -86,7 +63,7 @@ class ActionEval(Resource):
         try:
             with Scope(world=Entity):
                 try:
-                    action = actions[action_name]
+                    action = GAME_DOMAIN.actions[action_name]
                 except KeyError, e:
                     abort(404, message="Action '{}' was not found."
                           .format(action_name))
@@ -115,148 +92,3 @@ class ActionEval(Resource):
         except (TypeError, AttributeError, KeyError, ValidationError), e:
             abort(400, message=repr(e))
 api.add_resource(ActionEval, '/action/<action_name>')
-
-
-#########################
-# THE RULES OF THE GAME #
-#########################
-
-
-class IsEqual(Predicate):
-    def __call__(self, obj1, obj2):
-        return obj1 == obj2
-
-    def __str__(self):
-        return "{} must be same as {}".format(self.args['obj1'],
-                                              self.args['obj2'])
-
-
-class IsHeavy(Predicate):
-    def __call__(self, obj):
-        obj = Entity.objects.with_id(obj)
-        return obj is not None and obj.mass > 10.0
-
-    def __str__(self):
-        obj = Entity.objects.with_id(self.args['obj'])
-        return "{} must be heavy".format(obj.name)
-
-
-class IsHeld(Predicate):
-    def __call__(self, player, obj):
-        player = Player.objects.with_id(player)
-        obj = Entity.objects.with_id(obj)
-        return (player is not None
-                and obj is not None
-                and obj.container == player)
-
-    def __str__(self):
-        player = Player.objects.with_id(self.args['player'])
-        obj = Entity.objects.with_id(self.args['obj'])
-        return "{} must be held by {}".format(obj.name, player.name)
-
-
-class IsMyPlayer(Predicate):
-    def __call__(self, player):
-        player = Player.objects.with_id(player)
-        return player is not None and player.user.id == User.current().id
-
-    def __str__(self):
-        player = Player.objects.with_id(self.args['player'])
-        return "{} must be your player".format(player.name)
-
-
-class IsObject(Predicate):
-    def __call__(self, obj):
-        obj = Entity.objects.with_id(obj)
-        return obj is not None
-
-    def __str__(self):
-        obj = Entity.objects.with_id(self.args['obj'])
-        return "{} must be your player".format(obj.name)
-
-
-class Teleport(Action):
-    def __call__(self, player):
-        player = Player.objects.with_id(player)
-        world = World.objects.first()
-
-        player.container = world
-        player.save()
-
-        message("{player} teleported to {world}."
-                .format(player=player.name, world=world.name))
-
-    def pre(self, player):
-        return IsMyPlayer(player=player)
-
-
-class PickUp(Action):
-    def __call__(self, player, obj):
-        obj = Entity.objects.with_id(obj)
-        player = Player.objects.with_id(player)
-
-        obj.location = None
-        obj.container = player
-        obj.save()
-
-        message("{player} is picking up {obj}."
-                .format(player=player.name, obj=obj.name))
-
-    def pre(self, player, obj):
-        return (IsObject(obj=obj)
-                & ~IsHeld(player=player, obj=obj)
-                & ~IsHeavy(obj=obj)
-                & ~IsEqual(obj1=player, obj2=obj)
-                & IsMyPlayer(player=player))
-
-    def post(self, player, obj):
-        return IsHeld(player=player, obj=obj)
-
-
-class Drop(Action):
-    def __call__(self, player, obj):
-        obj = Entity.objects.with_id(obj)
-        player = Player.objects.with_id(player)
-
-        obj.location = None
-        obj.container = player.container
-        obj.save()
-
-        message("{player} is dropping {obj}."
-                .format(player=player.name, obj=obj.name))
-
-    def pre(self, player, obj):
-        return (IsObject(obj=obj)
-                & IsHeld(player=player, obj=obj)
-                & IsMyPlayer(player=player))
-
-    def post(self, player, obj):
-        return ~IsHeld(player=player, obj=obj)
-
-
-def load_predicates():
-    """
-    Load all the predicates into a dictionary.
-    """
-    table = {}
-    g = globals().copy()
-    for name, obj in g.iteritems():
-        if inspect.isclass(obj) and issubclass(obj, Predicate):
-            table[name] = obj
-    return table
-
-
-def load_actions():
-    """
-    Load all the actions into a dictionary.
-    """
-    table = {}
-    g = globals().copy()
-    for name, obj in g.iteritems():
-        if inspect.isclass(obj) and issubclass(obj, Action):
-            table[name] = obj()
-    return table
-
-
-actions = load_actions()
-predicates = load_predicates()

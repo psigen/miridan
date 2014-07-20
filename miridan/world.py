@@ -10,7 +10,26 @@ from flask.ext.mongoengine import ValidationError
 from mongoengine.errors import InvalidQueryError, OperationError
 
 
-VIEW_RADIUS = 20
+def message(msg, user=None):
+    """
+    Sends a string message to the engine log.
+    """
+    Log(user=User.current().id, message=msg).save()
+
+
+class Log(db.Document):
+    meta = {'max_documents': 1000}
+    user = db.ReferenceField(User, dbref=False)
+    message = db.StringField(max_length=255)
+
+
+class LogView(Resource):
+    def get(self):
+        logs = [{"user": log.user.email,
+                 "message": log.message}
+                for log in Log.objects]
+        return jsonify({"logs": logs})
+api.add_resource(LogView, '/log')
 
 
 class Entity(db.Document):

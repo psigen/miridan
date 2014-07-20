@@ -17,14 +17,16 @@ class FastDownward(object):
     """
     Wrapper class that handles calling FastDownward for planning problems.
     """
-
     def __init__(self):
         """
         Initializes a new FastDownward solver.
         """
-        self.translate_executable = ""
-        self.preprocess_executable = ""
-        self.search_executable = ""
+        self.translate_executable = \
+            "/home/pkv/Desktop/fd_deb/fd_src/src/translate/translate.py"
+        self.preprocess_executable = \
+            "/home/pkv/Desktop/fd_deb/fd_src/src/preprocess/preprocess"
+        self.search_executable = \
+            "/home/pkv/Desktop/fd_deb/fd_src/src/search/downward"
         self.options = DEFAULT_OPTIONS
 
     def solve(self, problem, options=None):
