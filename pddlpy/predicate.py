@@ -1,6 +1,7 @@
 """
 Module that defines all predicates in this world.
 """
+import inspect
 from pddlpy.scope import Scope
 
 
@@ -9,8 +10,13 @@ class BasePredicate(object):
     Represents a predicate that already has grounded atoms.
     """
     def __init__(self, *args, **kwargs):
-        self.args = args
-        self.kwargs = kwargs
+        argnames, _, _, _ = inspect.getargspec(self.__call__)
+
+        self.args = {}
+        self.args.update(dict(zip(argnames, args)))
+        if kwargs is not None:
+            self.args.update(kwargs)
+
         self.__call__ = self.__class__.__nonzero__
 
     def __getattr__(self, item):
@@ -26,7 +32,7 @@ class BasePredicate(object):
         """
         Evaluate this grounded predicate.
         """
-        return self.__class__.__call__(self, *self.args, **self.kwargs)
+        return self.__class__.__call__(self, **self.args)
 
     def __and__(self, other):
         """
@@ -40,7 +46,7 @@ class BasePredicate(object):
         """
         return NotPredicate(self)
 
-    def __call__(self, **kwargs):
+    def __call__(self, *args, **kwargs):
         """
         Empty implementation of predicate is trivially true.
         """

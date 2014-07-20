@@ -74,10 +74,11 @@ class ActionEval(Resource):
                           .format(action_name))
                 args = {name: arg for (name, arg) in request.args.iteritems()}
 
-                if action.pre(**args):
+                pre_success = action.pre(**args)
+                if pre_success:
                     action(**args)
-                    success = action.post(**args)
-                    if success:
+                    post_success = action.post(**args)
+                    if post_success:
                         return jsonify(action=action_name,
                                        args=args,
                                        result=True)
@@ -86,14 +87,13 @@ class ActionEval(Resource):
                                        args=args,
                                        result=False,
                                        reason="Postcondition: {}"
-                                              .format(success.why()))
+                                              .format(post_success.why()))
                 else:
-                    action(request.args)
                     return jsonify(action=action_name,
                                    args=args,
                                    result=False,
                                    reason="Precondition: {}"
-                                          .format(success.why()))
-        except (TypeError, AttributeError, KeyError, ValidationError), e:
+                                          .format(pre_success.why()))
+        except (AttributeError, KeyError, ValidationError), e:
             abort(400, message=repr(e))
 api.add_resource(ActionEval, '/action/<action_name>')
