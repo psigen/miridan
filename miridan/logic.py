@@ -6,7 +6,7 @@ from miridan.users import User
 from flask import jsonify, request
 from flask.ext.restful import Resource, abort
 from flask.ext.security import login_required
-from pddlpy import Predicate, Action, Domain
+from pddlpy import Predicate, Action, Scope
 import inspect
 from mongoengine.errors import ValidationError
 
@@ -50,7 +50,7 @@ class PredicateEval(Resource):
     @login_required
     def get(self, predicate_name):
         try:
-            with Domain(world=Entity):
+            with Scope(world=Entity):
                 predicate = predicates[predicate_name]
                 args = {name: arg for (name, arg) in request.args.iteritems()}
 
@@ -84,7 +84,7 @@ class ActionEval(Resource):
     @login_required
     def put(self, action_name):
         try:
-            with Domain(world=Entity):
+            with Scope(world=Entity):
                 try:
                     action = actions[action_name]
                 except KeyError, e:
