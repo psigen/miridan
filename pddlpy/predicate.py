@@ -88,7 +88,7 @@ class NotPredicate(BasePredicate):
         self.__call__ = self.__class__.__nonzero__
 
     def __nonzero__(self):
-        return ~bool(self.inner)
+        return not bool(self.inner)
 
     def why(self):
         return "NOT(" + self.inner.why() + ")"
