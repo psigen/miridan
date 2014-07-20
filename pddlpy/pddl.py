@@ -49,8 +49,8 @@ def domain_to_pddl(domain):
                                        for c in domain.constants])))
 
     predicates_def = ("(:predicates {})"
-                      .format(' '.join([predicate_to_pddl(p)
-                                        for p in domain.predicates])))
+                      .format(' '.join([predicate_to_pddl(p) for (n, p)
+                                        in domain.predicates.iteritems()])))
 
     functions_def = (None if not hasattr(domain, 'functions')
                      else "(:functions {})"
@@ -59,8 +59,8 @@ def domain_to_pddl(domain):
     if functions_def:
         requirements.append(":fluents")
 
-    structure_def = (' '.join([action_to_pddl(a)
-                               for a in domain.actions]))
+    structure_def = (' '.join([action_to_pddl(a) for (n, a)
+                               in domain.actions.iteritems()]))
 
     require_def = (None if not requirements
                    else "(:requirements {})"

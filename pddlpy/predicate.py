@@ -1,7 +1,7 @@
 """
 Module that defines all predicates in this world.
 """
-from pddlpy.domain import Domain
+from pddlpy.scope import Scope
 
 
 class BasePredicate(object):
@@ -18,7 +18,7 @@ class BasePredicate(object):
         Attempt to resolve unknown attributes from Domain scope.
         """
         try:
-            return Domain.root[item]
+            return Scope.root[item]
         except KeyError:
             raise AttributeError(item)
 

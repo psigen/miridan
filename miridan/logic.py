@@ -1,13 +1,18 @@
 from miridan import api
-from miridan.rules import GAME_DOMAIN
 from miridan.world import Entity
+import miridan.rules
 
 from flask import jsonify, request
 from flask.ext.restful import Resource, abort
 from flask.ext.security import login_required
-from pddlpy import Scope
+from pddlpy import Scope, Domain
 import inspect
 from mongoengine.errors import ValidationError
+
+"""
+This domain defines the rules of the game!
+"""
+GAME_DOMAIN = Domain().load(miridan.rules)
 
 
 def get_args(fn):
@@ -37,7 +42,7 @@ class PredicateEval(Resource):
         except KeyError:
             abort(404, message="Predicate '{}' was not found."
                                .format(predicate_name))
-        except (TypeError, AttributeError), e:
+        except (TypeError, AttributeError, ValidationError), e:
             abort(400, message=repr(e))
 api.add_resource(PredicateEval, '/predicate/<predicate_name>')
 

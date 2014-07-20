@@ -1,8 +1,7 @@
 """
 Defines rule domains for the game.
 """
-import inspect
-from pddlpy import Predicate, Action, Domain
+from pddlpy import Predicate, Action
 from miridan.users import User
 from miridan.world import Entity, Player, World, message
 
@@ -117,32 +116,3 @@ class Drop(Action):
 
     def post(self, player, obj):
         return ~IsHeld(player=player, obj=obj)
-
-
-def load_predicates():
-    """
-    Load all the predicates into a dictionary.
-    """
-    table = {}
-    g = globals().copy()
-    for name, obj in g.iteritems():
-        if inspect.isclass(obj) and issubclass(obj, Predicate):
-            table[name] = obj
-    return table
-
-
-def load_actions():
-    """
-    Load all the actions into a dictionary.
-    """
-    table = {}
-    g = globals().copy()
-    for name, obj in g.iteritems():
-        if inspect.isclass(obj) and issubclass(obj, Action):
-            table[name] = obj()
-    return table
-
-
-GAME_DOMAIN = Domain(name='Game',
-                     actions=load_actions(),
-                     predicates=load_predicates())

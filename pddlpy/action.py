@@ -2,7 +2,7 @@
 Module that defines all actions in this world.
 """
 from pddlpy.predicate import Predicate
-from pddlpy.domain import Domain
+from pddlpy.scope import Scope
 
 
 class Action(object):
@@ -17,7 +17,7 @@ class Action(object):
         Attempt to resolve unknown attributes from Domain scope.
         """
         try:
-            return Domain.root[item]
+            return Scope.root[item]
         except KeyError:
             raise AttributeError(item)
 
